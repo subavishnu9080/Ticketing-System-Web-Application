@@ -1,4 +1,4 @@
-# VeloTick | Premium Enterprise Helpdesk & Ticketing System
+# Demo Ticket | Premium Enterprise Helpdesk & Ticketing System
 
 VeloTick is a modern, responsive, full-stack Ticketing System built using a premium dark-themed React frontend, a Node.js + Express backend, and a Mongoose (MongoDB) database layer. It is designed to look outstanding, provide lightning-fast interactions, and support role-based access controls and AI-assisted metadata predictions.
 
