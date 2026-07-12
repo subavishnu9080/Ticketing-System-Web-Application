@@ -34,7 +34,7 @@ module.exports = {
       assignee,
       createdBy,
       save: async function() {
-        const { id: _, _id: __, save: ___, assignee: ____, createdBy: _____, ...dataToSave } = this;
+        const { id: _, _id: __, save: ___, destroy: ____, assignee: _____, createdBy: ______, ...dataToSave } = this;
         await getTicketsCollection().doc(this.id).update({
           ...dataToSave,
           updatedAt: new Date().toISOString()
