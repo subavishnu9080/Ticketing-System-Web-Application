@@ -33,4 +33,6 @@ lerna-debug.log*
 *.sln
 *.sw?
 *.sqlite
+firebase-service-account.json
+
 

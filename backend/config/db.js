@@ -41,7 +41,7 @@ const connectDB = async () => {
         console.log(`Connecting to Firebase using service account key at: ${resolvedPath}...`);
         const serviceAccount = require(resolvedPath);
         admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount)
+          credential: admin.cert(serviceAccount)
         });
       } else {
         console.log(`Connecting to Firebase Emulator / local fallback with Project ID: ${projectId}...`);
