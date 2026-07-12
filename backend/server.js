@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
-const { connectDB } = require('./config/db');
+const { connectDB, checkDbConfigured, isDbConfigured } = require('./config/db');
 const User = require('./models/User');
 
 const app = express();
@@ -10,6 +10,9 @@ const app = express();
 // Middlewares
 app.use(cors());
 app.use(express.json());
+
+// Intercept requests if Firebase is not configured
+app.use(checkDbConfigured);
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -56,8 +59,12 @@ const startServer = async () => {
   // Connect to DB
   await connectDB();
   
-  // Seed database
-  await seedDemoUsers();
+  // Seed database if database is configured successfully
+  if (isDbConfigured()) {
+    await seedDemoUsers();
+  } else {
+    console.log('Skipping user seeding: database is unconfigured.');
+  }
 
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
