@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
+const { Op } = require('sequelize');
+const { sequelize } = require('../config/db');
 const Ticket = require('../models/Ticket');
 const Comment = require('../models/Comment');
+const User = require('../models/User');
 const { protect, authorize } = require('../middleware/auth');
 const { OpenAI } = require('openai');
 
@@ -104,27 +107,33 @@ router.get('/', protect, async (req, res) => {
     if (status) filter.status = status;
     if (priority) filter.priority = priority;
     if (assignee) {
-      filter.assignee = assignee === 'unassigned' ? null : assignee;
+      filter.assigneeId = assignee === 'unassigned' ? null : assignee;
     }
 
     if (search) {
-      filter.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
+      // Use iLike for case-insensitive search in PostgreSQL, LIKE in SQLite
+      const isPostgres = sequelize.options.dialect === 'postgres';
+      const likeOp = isPostgres ? Op.iLike : Op.like;
+
+      filter[Op.or] = [
+        { title: { [likeOp]: `%${search}%` } },
+        { description: { [likeOp]: `%${search}%` } }
       ];
     }
 
-    // Standard access rules: 
-    // - Customers (role: user) can only see tickets they created
-    // - Admins and Agents can see all tickets
+    // Access control rules
     if (req.user.role === 'user') {
-      filter.createdBy = req.user._id;
+      filter.createdById = req.user.id;
     }
 
-    const tickets = await Ticket.find(filter)
-      .populate('assignee', 'username role')
-      .populate('createdBy', 'username role')
-      .sort({ createdAt: -1 });
+    const tickets = await Ticket.findAll({
+      where: filter,
+      include: [
+        { model: User, as: 'assignee', attributes: ['id', 'username', 'role'] },
+        { model: User, as: 'createdBy', attributes: ['id', 'username', 'role'] }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
 
     res.json(tickets);
   } catch (error) {
@@ -137,22 +146,29 @@ router.get('/', protect, async (req, res) => {
 // @access  Protected
 router.get('/:id', protect, async (req, res) => {
   try {
-    const ticket = await Ticket.findById(req.params.id)
-      .populate('assignee', 'username role')
-      .populate('createdBy', 'username role');
+    const ticket = await Ticket.findByPk(req.params.id, {
+      include: [
+        { model: User, as: 'assignee', attributes: ['id', 'username', 'role'] },
+        { model: User, as: 'createdBy', attributes: ['id', 'username', 'role'] }
+      ]
+    });
 
     if (!ticket) {
       return res.status(404).json({ message: 'Ticket not found' });
     }
 
     // Role verification: User role can only view their own tickets
-    if (req.user.role === 'user' && ticket.createdBy._id.toString() !== req.user._id.toString()) {
+    if (req.user.role === 'user' && ticket.createdById !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized to view this ticket' });
     }
 
-    const comments = await Comment.find({ ticketId: ticket._id })
-      .populate('author', 'username role')
-      .sort({ created_at: 1 });
+    const comments = await Comment.findAll({
+      where: { ticketId: ticket.id },
+      include: [
+        { model: User, as: 'author', attributes: ['id', 'username', 'role'] }
+      ],
+      order: [['created_at', 'ASC']]
+    });
 
     res.json({ ticket, comments });
   } catch (error) {
@@ -175,12 +191,15 @@ router.post('/', protect, async (req, res) => {
       description,
       priority: priority || 'medium',
       category: category || 'General',
-      createdBy: req.user._id
+      createdById: req.user.id
     });
 
-    const populatedTicket = await Ticket.findById(ticket._id)
-      .populate('assignee', 'username role')
-      .populate('createdBy', 'username role');
+    const populatedTicket = await Ticket.findByPk(ticket.id, {
+      include: [
+        { model: User, as: 'assignee', attributes: ['id', 'username', 'role'] },
+        { model: User, as: 'createdBy', attributes: ['id', 'username', 'role'] }
+      ]
+    });
 
     res.status(201).json(populatedTicket);
   } catch (error) {
@@ -193,7 +212,7 @@ router.post('/', protect, async (req, res) => {
 // @access  Protected (Agents & Admins can change status/priority/assignee; Users can update description/title only if open)
 router.put('/:id', protect, async (req, res) => {
   try {
-    let ticket = await Ticket.findById(req.params.id);
+    let ticket = await Ticket.findByPk(req.params.id);
     if (!ticket) {
       return res.status(404).json({ message: 'Ticket not found' });
     }
@@ -204,7 +223,7 @@ router.put('/:id', protect, async (req, res) => {
     // Access control
     if (!isAgentOrAdmin) {
       // Regular user can only modify their own tickets
-      if (ticket.createdBy.toString() !== req.user._id.toString()) {
+      if (ticket.createdById !== req.user.id) {
         return res.status(403).json({ message: 'Not authorized to update this ticket' });
       }
       // Regular users cannot modify assignee or status/priority directly once submitted
@@ -222,15 +241,18 @@ router.put('/:id', protect, async (req, res) => {
       if (status) ticket.status = status;
       if (priority) ticket.priority = priority;
       if (assignee !== undefined) {
-        ticket.assignee = assignee === 'unassigned' || !assignee ? null : assignee;
+        ticket.assigneeId = assignee === 'unassigned' || !assignee ? null : assignee;
       }
     }
 
     await ticket.save();
 
-    const updatedTicket = await Ticket.findById(ticket._id)
-      .populate('assignee', 'username role')
-      .populate('createdBy', 'username role');
+    const updatedTicket = await Ticket.findByPk(ticket.id, {
+      include: [
+        { model: User, as: 'assignee', attributes: ['id', 'username', 'role'] },
+        { model: User, as: 'createdBy', attributes: ['id', 'username', 'role'] }
+      ]
+    });
 
     res.json(updatedTicket);
   } catch (error) {
@@ -243,13 +265,13 @@ router.put('/:id', protect, async (req, res) => {
 // @access  Protected (Admins only)
 router.delete('/:id', protect, authorize('admin'), async (req, res) => {
   try {
-    const ticket = await Ticket.findById(req.params.id);
+    const ticket = await Ticket.findByPk(req.params.id);
     if (!ticket) {
       return res.status(404).json({ message: 'Ticket not found' });
     }
 
-    await Ticket.findByIdAndDelete(req.params.id);
-    await Comment.deleteMany({ ticketId: req.params.id });
+    await ticket.destroy();
+    await Comment.destroy({ where: { ticketId: req.params.id } });
 
     res.json({ message: 'Ticket and associated comments deleted successfully' });
   } catch (error) {
@@ -267,24 +289,27 @@ router.post('/:id/comments', protect, async (req, res) => {
       return res.status(400).json({ message: 'Comment text is required' });
     }
 
-    const ticket = await Ticket.findById(req.params.id);
+    const ticket = await Ticket.findByPk(req.params.id);
     if (!ticket) {
       return res.status(404).json({ message: 'Ticket not found' });
     }
 
     // Regular users can only comment on their own tickets
-    if (req.user.role === 'user' && ticket.createdBy.toString() !== req.user._id.toString()) {
+    if (req.user.role === 'user' && ticket.createdById !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized to comment on this ticket' });
     }
 
     const commentDoc = await Comment.create({
-      ticketId: ticket._id,
+      ticketId: ticket.id,
       comment,
-      author: req.user._id
+      authorId: req.user.id
     });
 
-    const populatedComment = await Comment.findById(commentDoc._id)
-      .populate('author', 'username role');
+    const populatedComment = await Comment.findByPk(commentDoc.id, {
+      include: [
+        { model: User, as: 'author', attributes: ['id', 'username', 'role'] }
+      ]
+    });
 
     res.status(201).json(populatedComment);
   } catch (error) {

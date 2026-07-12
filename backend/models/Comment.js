@@ -1,22 +1,33 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/db');
+const Ticket = require('./Ticket');
+const User = require('./User');
 
-const CommentSchema = new mongoose.Schema({
-  ticketId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Ticket',
-    required: true
+const Comment = sequelize.define('Comment', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
   },
   comment: {
-    type: String,
-    required: true
-  },
-  author: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+    type: DataTypes.TEXT,
+    allowNull: false
   }
 }, {
-  timestamps: { createdAt: 'created_at', updatedAt: false }
+  timestamps: true,
+  createdAt: 'created_at',
+  updatedAt: false
 });
 
-module.exports = mongoose.model('Comment', CommentSchema);
+// Setup relationships
+Comment.belongsTo(Ticket, { as: 'ticket', foreignKey: 'ticketId' });
+Comment.belongsTo(User, { as: 'author', foreignKey: 'authorId' });
+
+// Map SQL id to _id for frontend compatibility
+Comment.prototype.toJSON = function () {
+  const values = Object.assign({}, this.get());
+  values._id = values.id;
+  return values;
+};
+
+module.exports = Comment;

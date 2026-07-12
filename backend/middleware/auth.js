@@ -12,10 +12,18 @@ const protect = async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
-      req.user = await User.findById(decoded.id).select('-password');
-      if (!req.user) {
+      const user = await User.findByPk(decoded.id, {
+        attributes: { exclude: ['password'] }
+      });
+
+      if (!user) {
         return res.status(401).json({ message: 'User not found, authorization failed' });
       }
+
+      req.user = user;
+      // Add _id mapping to request user object to prevent breaking route controls expecting MongoDB _id
+      req.user._id = user.id;
+
       return next();
     } catch (error) {
       console.error('JWT verification error:', error.message);

@@ -1,41 +1,46 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/db');
+const User = require('./User');
 
-const TicketSchema = new mongoose.Schema({
+const Ticket = sequelize.define('Ticket', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
   title: {
-    type: String,
-    required: true,
-    trim: true
+    type: DataTypes.STRING,
+    allowNull: false
   },
   description: {
-    type: String,
-    required: true
+    type: DataTypes.TEXT,
+    allowNull: false
   },
   status: {
-    type: String,
-    enum: ['open', 'in-progress', 'resolved', 'closed'],
-    default: 'open'
+    type: DataTypes.ENUM('open', 'in-progress', 'resolved', 'closed'),
+    defaultValue: 'open'
   },
   priority: {
-    type: String,
-    enum: ['low', 'medium', 'high'],
-    default: 'medium'
+    type: DataTypes.ENUM('low', 'medium', 'high'),
+    defaultValue: 'medium'
   },
   category: {
-    type: String,
-    default: 'General'
-  },
-  assignee: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    default: null
-  },
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+    type: DataTypes.STRING,
+    defaultValue: 'General'
   }
 }, {
   timestamps: true
 });
 
-module.exports = mongoose.model('Ticket', TicketSchema);
+// Setup relationships
+Ticket.belongsTo(User, { as: 'assignee', foreignKey: 'assigneeId' });
+Ticket.belongsTo(User, { as: 'createdBy', foreignKey: 'createdById' });
+
+// Map SQL id to _id for frontend compatibility
+Ticket.prototype.toJSON = function () {
+  const values = Object.assign({}, this.get());
+  values._id = values.id;
+  return values;
+};
+
+module.exports = Ticket;

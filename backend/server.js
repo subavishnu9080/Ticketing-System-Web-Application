@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
-const { connectDB } = require('./config/db');
+const { connectDB, sequelize } = require('./config/db');
 const User = require('./models/User');
 
 const app = express();
@@ -23,7 +23,7 @@ app.get('/', (req, res) => {
 // Seed demo users if empty
 const seedDemoUsers = async () => {
   try {
-    const userCount = await User.countDocuments();
+    const userCount = await User.count();
     if (userCount === 0) {
       console.log('Seeding database with demo users...');
       
@@ -33,7 +33,7 @@ const seedDemoUsers = async () => {
       const agentPassword = await bcrypt.hash('agent123', salt);
       const userPassword = await bcrypt.hash('user123', salt);
 
-      await User.create([
+      await User.bulkCreate([
         { username: 'admin', password: adminPassword, role: 'admin' },
         { username: 'agent', password: agentPassword, role: 'agent' },
         { username: 'user', password: userPassword, role: 'user' }
@@ -55,6 +55,10 @@ const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   // Connect to DB
   await connectDB();
+
+  // Sync Sequelize models
+  console.log('Syncing database schemas...');
+  await sequelize.sync();
   
   // Seed database
   await seedDemoUsers();
