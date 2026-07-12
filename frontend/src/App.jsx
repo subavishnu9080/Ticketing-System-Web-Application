@@ -31,7 +31,7 @@ export default function App() {
 
   // Toast Notification Trigger
   const showToast = useCallback((message, type = 'info') => {
-    const id = Date.now();
+    const id = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
