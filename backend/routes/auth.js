@@ -21,7 +21,7 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'Username and password are required' });
     }
     
-    const userExists = await User.findOne({ where: { username } });
+    const userExists = await User.findOne({ username });
     if (userExists) {
       return res.status(400).json({ message: 'Username is already taken' });
     }
@@ -55,7 +55,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Username and password are required' });
     }
 
-    const user = await User.findOne({ where: { username } });
+    const user = await User.findOne({ username });
     if (user && (await bcrypt.compare(password, user.password))) {
       res.json({
         _id: user.id,
@@ -75,10 +75,15 @@ router.post('/login', async (req, res) => {
 // @desc    Get all users (for assignment dropdown)
 router.get('/users', protect, async (req, res) => {
   try {
-    const users = await User.findAll({
-      attributes: ['id', 'username', 'role']
-    });
-    res.json(users);
+    const users = await User.findAll();
+    // Only return username and role details
+    const formattedUsers = users.map(u => ({
+      id: u.id,
+      _id: u.id,
+      username: u.username,
+      role: u.role
+    }));
+    res.json(formattedUsers);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

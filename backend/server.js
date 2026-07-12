@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
-const { connectDB, sequelize } = require('./config/db');
+const { connectDB } = require('./config/db');
 const User = require('./models/User');
 
 const app = express();
@@ -25,7 +25,7 @@ const seedDemoUsers = async () => {
   try {
     const userCount = await User.count();
     if (userCount === 0) {
-      console.log('Seeding database with demo users...');
+      console.log('Seeding database with demo users in Firestore...');
       
       const salt = await bcrypt.genSalt(10);
       
@@ -55,10 +55,6 @@ const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   // Connect to DB
   await connectDB();
-
-  // Sync Sequelize models
-  console.log('Syncing database schemas...');
-  await sequelize.sync();
   
   // Seed database
   await seedDemoUsers();

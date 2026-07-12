@@ -12,16 +12,15 @@ const protect = async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       
-      const user = await User.findByPk(decoded.id, {
-        attributes: { exclude: ['password'] }
-      });
+      const user = await User.findById(decoded.id);
 
       if (!user) {
         return res.status(401).json({ message: 'User not found, authorization failed' });
       }
 
-      req.user = user;
-      // Add _id mapping to request user object to prevent breaking route controls expecting MongoDB _id
+      // Exclude password from the request user object
+      const { password, ...userWithoutPassword } = user;
+      req.user = userWithoutPassword;
       req.user._id = user.id;
 
       return next();

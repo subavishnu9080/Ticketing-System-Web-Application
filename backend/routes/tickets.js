@@ -1,10 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const { Op } = require('sequelize');
-const { sequelize } = require('../config/db');
 const Ticket = require('../models/Ticket');
 const Comment = require('../models/Comment');
-const User = require('../models/User');
 const { protect, authorize } = require('../middleware/auth');
 const { OpenAI } = require('openai');
 
@@ -106,35 +103,17 @@ router.get('/', protect, async (req, res) => {
 
     if (status) filter.status = status;
     if (priority) filter.priority = priority;
-    if (assignee) {
+    if (assignee !== undefined && assignee !== '') {
       filter.assigneeId = assignee === 'unassigned' ? null : assignee;
     }
-
-    if (search) {
-      // Use iLike for case-insensitive search in PostgreSQL, LIKE in SQLite
-      const isPostgres = sequelize.options.dialect === 'postgres';
-      const likeOp = isPostgres ? Op.iLike : Op.like;
-
-      filter[Op.or] = [
-        { title: { [likeOp]: `%${search}%` } },
-        { description: { [likeOp]: `%${search}%` } }
-      ];
-    }
-
-    // Access control rules
     if (req.user.role === 'user') {
       filter.createdById = req.user.id;
     }
+    if (search) {
+      filter.search = search;
+    }
 
-    const tickets = await Ticket.findAll({
-      where: filter,
-      include: [
-        { model: User, as: 'assignee', attributes: ['id', 'username', 'role'] },
-        { model: User, as: 'createdBy', attributes: ['id', 'username', 'role'] }
-      ],
-      order: [['createdAt', 'DESC']]
-    });
-
+    const tickets = await Ticket.findAll(filter);
     res.json(tickets);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -146,12 +125,7 @@ router.get('/', protect, async (req, res) => {
 // @access  Protected
 router.get('/:id', protect, async (req, res) => {
   try {
-    const ticket = await Ticket.findByPk(req.params.id, {
-      include: [
-        { model: User, as: 'assignee', attributes: ['id', 'username', 'role'] },
-        { model: User, as: 'createdBy', attributes: ['id', 'username', 'role'] }
-      ]
-    });
+    const ticket = await Ticket.findByPk(req.params.id);
 
     if (!ticket) {
       return res.status(404).json({ message: 'Ticket not found' });
@@ -162,13 +136,7 @@ router.get('/:id', protect, async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to view this ticket' });
     }
 
-    const comments = await Comment.findAll({
-      where: { ticketId: ticket.id },
-      include: [
-        { model: User, as: 'author', attributes: ['id', 'username', 'role'] }
-      ],
-      order: [['created_at', 'ASC']]
-    });
+    const comments = await Comment.findAll({ ticketId: ticket.id });
 
     res.json({ ticket, comments });
   } catch (error) {
@@ -194,12 +162,7 @@ router.post('/', protect, async (req, res) => {
       createdById: req.user.id
     });
 
-    const populatedTicket = await Ticket.findByPk(ticket.id, {
-      include: [
-        { model: User, as: 'assignee', attributes: ['id', 'username', 'role'] },
-        { model: User, as: 'createdBy', attributes: ['id', 'username', 'role'] }
-      ]
-    });
+    const populatedTicket = await Ticket.findByPk(ticket.id);
 
     res.status(201).json(populatedTicket);
   } catch (error) {
@@ -247,12 +210,7 @@ router.put('/:id', protect, async (req, res) => {
 
     await ticket.save();
 
-    const updatedTicket = await Ticket.findByPk(ticket.id, {
-      include: [
-        { model: User, as: 'assignee', attributes: ['id', 'username', 'role'] },
-        { model: User, as: 'createdBy', attributes: ['id', 'username', 'role'] }
-      ]
-    });
+    const updatedTicket = await Ticket.findByPk(ticket.id);
 
     res.json(updatedTicket);
   } catch (error) {
@@ -271,7 +229,7 @@ router.delete('/:id', protect, authorize('admin'), async (req, res) => {
     }
 
     await ticket.destroy();
-    await Comment.destroy({ where: { ticketId: req.params.id } });
+    await Comment.destroy({ ticketId: req.params.id });
 
     res.json({ message: 'Ticket and associated comments deleted successfully' });
   } catch (error) {
@@ -305,11 +263,8 @@ router.post('/:id/comments', protect, async (req, res) => {
       authorId: req.user.id
     });
 
-    const populatedComment = await Comment.findByPk(commentDoc.id, {
-      include: [
-        { model: User, as: 'author', attributes: ['id', 'username', 'role'] }
-      ]
-    });
+    const comments = await Comment.findAll({ ticketId: ticket.id });
+    const populatedComment = comments.find(c => c.id === commentDoc.id);
 
     res.status(201).json(populatedComment);
   } catch (error) {
