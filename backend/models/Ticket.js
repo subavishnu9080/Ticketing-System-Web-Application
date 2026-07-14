@@ -50,6 +50,7 @@ module.exports = {
   create: async (data) => {
     const ticketData = {
       ...data,
+      assigneeId: data.assigneeId || null,
       status: data.status || 'open',
       priority: data.priority || 'medium',
       category: data.category || 'General',
@@ -74,12 +75,19 @@ module.exports = {
     if (filters.createdById) {
       query = query.where('createdById', '==', filters.createdById);
     }
-    if (filters.assigneeId !== undefined) {
+    // Only query Firestore directly if filtering for a specific assignee user ID.
+    // If filtering for unassigned (null), we will filter in-memory below.
+    if (filters.assigneeId !== undefined && filters.assigneeId !== null) {
       query = query.where('assigneeId', '==', filters.assigneeId);
     }
 
     const snapshot = await query.get();
     let tickets = snapshot.docs.map(doc => ({ id: doc.id, _id: doc.id, ...doc.data() }));
+
+    // Filter in-memory for unassigned assigneeId (null or undefined)
+    if (filters.assigneeId === null) {
+      tickets = tickets.filter(t => t.assigneeId === null || t.assigneeId === undefined);
+    }
 
     // In-memory sort (avoids composite index requirements in Firestore)
     tickets.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));

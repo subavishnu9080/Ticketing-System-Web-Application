@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { X, Sparkles } from 'lucide-react';
-
-const API_BASE = 'http://localhost:5000';
+import { apiFetch } from '../utils/api';
 
 export default function TicketForm({ currentUser, onClose, onSubmitSuccess, showToast }) {
   const [title, setTitle] = useState('');
@@ -20,19 +19,10 @@ export default function TicketForm({ currentUser, onClose, onSubmitSuccess, show
 
     setSuggesting(true);
     try {
-      const response = await fetch(`${API_BASE}/api/tickets/suggest`, {
+      const data = await apiFetch('/api/tickets/suggest', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${currentUser.token}`
-        },
         body: JSON.stringify({ description })
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Auto-suggestion failed');
-      }
+      }, currentUser.token);
 
       if (data.priority) setPriority(data.priority);
       if (data.category) setCategory(data.category);
@@ -53,19 +43,10 @@ export default function TicketForm({ currentUser, onClose, onSubmitSuccess, show
 
     setSubmitting(true);
     try {
-      const response = await fetch(`${API_BASE}/api/tickets`, {
+      const data = await apiFetch('/api/tickets', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${currentUser.token}`
-        },
         body: JSON.stringify({ title, description, priority, category, status })
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to create ticket');
-      }
+      }, currentUser.token);
 
       showToast('Ticket created successfully!', 'success');
       onSubmitSuccess(data);

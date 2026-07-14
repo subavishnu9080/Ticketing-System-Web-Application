@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Send, User, Calendar, MessageSquare, AlertCircle } from 'lucide-react';
-
-const API_BASE = 'http://localhost:5000';
+import { apiFetch } from '../utils/api';
 
 export default function TicketDetail({ ticketId, currentUser, users, onClose, onTicketUpdated, showToast }) {
   const [ticket, setTicket] = useState(null);
@@ -14,16 +13,7 @@ export default function TicketDetail({ ticketId, currentUser, users, onClose, on
   const fetchDetails = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/api/tickets/${ticketId}`, {
-        headers: {
-          'Authorization': `Bearer ${currentUser.token}`
-        }
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch ticket details');
-      }
+      const data = await apiFetch(`/api/tickets/${ticketId}`, {}, currentUser.token);
 
       setTicket(data.ticket);
       setComments(data.comments || []);
@@ -52,19 +42,10 @@ export default function TicketDetail({ ticketId, currentUser, users, onClose, on
         bodyPayload[field] = value;
       }
 
-      const response = await fetch(`${API_BASE}/api/tickets/${ticketId}`, {
+      const data = await apiFetch(`/api/tickets/${ticketId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${currentUser.token}`
-        },
         body: JSON.stringify(bodyPayload)
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to update ticket');
-      }
+      }, currentUser.token);
 
       setTicket(data);
       onTicketUpdated(data);
@@ -81,18 +62,11 @@ export default function TicketDetail({ ticketId, currentUser, users, onClose, on
 
   const postAuditComment = async (text) => {
     try {
-      const response = await fetch(`${API_BASE}/api/tickets/${ticketId}/comments`, {
+      const commentData = await apiFetch(`/api/tickets/${ticketId}/comments`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${currentUser.token}`
-        },
         body: JSON.stringify({ comment: `[Activity Log] ${text}` })
-      });
-      if (response.ok) {
-        const commentData = await response.json();
-        setComments(prev => [...prev, commentData]);
-      }
+      }, currentUser.token);
+      setComments(prev => [...prev, commentData]);
     } catch (err) {
       console.error('Failed to create activity log comment:', err);
     }
@@ -104,19 +78,10 @@ export default function TicketDetail({ ticketId, currentUser, users, onClose, on
 
     setCommenting(true);
     try {
-      const response = await fetch(`${API_BASE}/api/tickets/${ticketId}/comments`, {
+      const data = await apiFetch(`/api/tickets/${ticketId}/comments`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${currentUser.token}`
-        },
         body: JSON.stringify({ comment: newComment })
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to add comment');
-      }
+      }, currentUser.token);
 
       setComments(prev => [...prev, data]);
       setNewComment('');

@@ -5,8 +5,7 @@ import Dashboard from './components/Dashboard';
 import TicketList from './components/TicketList';
 import TicketForm from './components/TicketForm';
 import TicketDetail from './components/TicketDetail';
-
-const API_BASE = 'http://localhost:5000';
+import { apiFetch } from './utils/api';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
@@ -63,16 +62,7 @@ export default function App() {
       if (priorityFilter) queryParams.append('priority', priorityFilter);
       if (assigneeFilter) queryParams.append('assignee', assigneeFilter);
 
-      const response = await fetch(`${API_BASE}/api/tickets?${queryParams.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${currentUser.token}`
-        }
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch tickets');
-      }
+      const data = await apiFetch(`/api/tickets?${queryParams.toString()}`, {}, currentUser.token);
 
       setTickets(data);
     } catch (err) {
@@ -87,16 +77,8 @@ export default function App() {
     if (!currentUser || currentUser.role === 'user') return;
 
     try {
-      const response = await fetch(`${API_BASE}/api/auth/users`, {
-        headers: {
-          'Authorization': `Bearer ${currentUser.token}`
-        }
-      });
-      const data = await response.json();
-
-      if (response.ok) {
-        setUsers(data);
-      }
+      const data = await apiFetch('/api/auth/users', {}, currentUser.token);
+      setUsers(data);
     } catch (err) {
       console.error('Failed to fetch user list:', err);
     }
@@ -128,17 +110,9 @@ export default function App() {
     }
 
     try {
-      const response = await fetch(`${API_BASE}/api/tickets/${ticketId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${currentUser.token}`
-        }
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to delete ticket');
-      }
+      await apiFetch(`/api/tickets/${ticketId}`, {
+        method: 'DELETE'
+      }, currentUser.token);
 
       showToast('Ticket deleted successfully', 'success');
       setTickets((prev) => prev.filter((t) => t._id !== ticketId));

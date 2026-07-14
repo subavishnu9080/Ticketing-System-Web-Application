@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Lock, User, Shield, ArrowRight } from 'lucide-react';
-
-const API_BASE = 'http://localhost:5000';
+import { apiFetch } from '../utils/api';
 
 export default function Auth({ onLoginSuccess, showToast }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -24,16 +23,10 @@ export default function Auth({ onLoginSuccess, showToast }) {
       : { username, password, role };
 
     try {
-      const response = await fetch(`${API_BASE}${endpoint}`, {
+      const data = await apiFetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Authentication failed');
-      }
 
       showToast(isLogin ? `Welcome back, ${data.username}!` : 'Account registered successfully!', 'success');
       onLoginSuccess(data);
