@@ -1,73 +1,183 @@
 # Demo Ticket | Premium Enterprise Helpdesk & Ticketing System
 
-Demo Ticket is a modern, responsive, full-stack Ticketing System built using a premium dark-themed React frontend, a Node.js + Express backend, and a Mongoose (MongoDB) database layer. It is designed to look outstanding, provide lightning-fast interactions, and support role-based access controls and AI-assisted metadata predictions.
-
----
+Demo Ticket is a modern, responsive, full-stack Ticketing System built using a premium dark-themed React frontend, a Node.js + Express backend, and Firebase as the backend database and authentication service. It is designed to provide a fast, responsive user experience with role-based access control and AI-assisted ticket metadata predictions.
 
 ## 🚀 Tech Stack
 
-- **Frontend**: React (v19 scaffolded with Vite), Vanilla CSS (responsive, glassmorphism overlays, custom animations), Lucide React (for premium typography icons).
-- **Backend**: Node.js, Express.js, Mongoose (MongoDB).
-- **Database**: MongoDB (supports both a remote cluster connection and a transparent local in-memory fallback for zero-configuration testing).
-- **AI Engine**: OpenAI Node SDK (falling back to a local heuristic classification engine when no API key is specified).
+* **Frontend:** React (v19 with Vite), Vanilla CSS, Lucide React
+* **Backend:** Node.js, Express.js
+* **Database:** Firebase Firestore
+* **Authentication:** Firebase Authentication
+* **AI Engine:** OpenAI Node SDK (falls back to a local heuristic classification engine when no API key is provided)
 
 ---
 
 ## ✨ Features Implemented
 
-1. **Dashboard Operational Insights**: High-level visual cards detailing ticket counts by status, priority, and a real-time completion progress meter.
-2. **Ticket CRUD & Custom Filters**: Complete ticket life-cycle management. Supports title/description search, status filter, priority filter, and assignee filter.
-3. **AI Auto-Suggest Details**: Analyzes ticket description to auto-suggest ticket priority (low, medium, high) and category (Access, Software, Hardware, Network, etc.) with a single click.
-4. **Interactive Audit & Comments Feed**: Complete activity timeline displaying audit logs (status changes, assignee changes) and user comments.
-5. **Role-Based Access Control**:
-   - **User**: Can raise tickets, comment on them, and view only tickets they created.
-   - **Agent**: Can view all tickets, comment, and change ticket status, priority, and assignees.
-   - **Admin**: Full access. Can execute all operations, including deleting tickets.
+### Dashboard & Analytics
+
+* Real-time dashboard with ticket statistics.
+* Ticket counts by status and priority.
+* Completion progress meter.
+
+### Ticket Management
+
+* Create, view, update, and delete tickets.
+* Search tickets by title and description.
+* Filter by status, priority, category, and assignee.
+
+### AI Ticket Suggestions
+
+* Automatically suggests ticket priority and category based on the ticket description.
+* Falls back to a local keyword-based classifier when no OpenAI API key is configured.
+
+### Activity Timeline
+
+* Displays ticket comments.
+* Tracks ticket updates such as status changes, priority updates, and assignee changes.
+
+### Role-Based Access Control
+
+**User**
+
+* Create support tickets.
+* View and comment on their own tickets.
+
+**Agent**
+
+* View all tickets.
+* Update ticket status, priority, and assignee.
+* Add comments.
+
+**Admin**
+
+* Full system access.
+* Manage all tickets and users.
+* Delete tickets.
 
 ---
 
-## 🛠️ Installation & Setup
+## 🛠 Installation & Setup
 
 ### Prerequisites
-Ensure you have **Node.js** (v18+) and **npm** installed on your system.
 
-### Steps
-1. Navigate to the project root directory:
-   ```bash
-   cd ticketing-system
-   ```
-2. Install all dependencies across the workspace (root, backend, and frontend) using the shortcut script:
-   ```bash
-   npm run install:all
-   ```
-3. Run the development environment concurrently:
-   ```bash
-   npm run dev
-   ```
-   - **Frontend URL**: `http://localhost:5173/`
-   - **Backend API URL**: `http://localhost:5000/`
+* Node.js (v18 or later)
+* npm
+
+### Installation
+
+Navigate to the project folder:
+
+```bash
+cd ticketing-system
+```
+
+Install dependencies:
+
+```bash
+npm run install:all
+```
+
+Configure Firebase credentials in your project.
+
+Create a `.env` file inside the backend folder and add your Firebase configuration:
+
+```env
+FIREBASE_PROJECT_ID=your_project_id
+FIREBASE_CLIENT_EMAIL=your_client_email
+FIREBASE_PRIVATE_KEY=your_private_key
+OPENAI_API_KEY=your_openai_api_key
+```
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+Frontend:
+
+```
+http://localhost:5173
+```
+
+Backend:
+
+```
+http://localhost:5000
+```
 
 ---
 
-## 🔑 Seeding & Demo Access
-The system automatically seeds the database with the following demo profiles on startup:
+## 🔑 Demo Access
 
-- **Admin Profile** (Full privileges + Ticket Deletion)
-  - Username: `admin`
-  - Password: `admin123`
-- **Agent Profile** (Access all tickets + Assign & update statuses)
-  - Username: `agent`
-  - Password: `agent123`
-- **User Profile** (Create tickets + View/comment own tickets only)
-  - Username: `user`
-  - Password: `user123`
+Demo accounts (if seeded into Firebase):
 
-*You can also use the **Register** tab on the login screen to create a custom user account and pick your profile type.*
+### Admin
+
+* Username: admin
+* Password: admin123
+
+### Agent
+
+* Username: agent
+* Password: agent123
+
+### User
+
+* Username: user
+* Password: user123
+
+You can also register a new account through the application's registration page if enabled.
 
 ---
 
-## 📝 Assumptions & Fallback Design Decisions
+## 🔥 Firebase Integration
 
-1. **Database Fallback**: To guarantee that the application starts up instantly without requiring a pre-installed MongoDB server, the backend automatically uses `mongodb-memory-server` to run a temporary MongoDB instance in memory. To connect to a persistent database, simply specify the connection string in the backend `.env` file under `MONGODB_URI`.
-2. **OpenAI Suggestion Heuristic**: If an `OPENAI_API_KEY` is not provided in the backend `.env` file, the `/api/tickets/suggest` endpoint falls back to a regex-based heuristic classifier. This parses the description text for support keywords (e.g. "urgent", "crash", "wifi", "password") to auto-suggest the priority and category so the feature remains functional and testable out-of-the-box.
-3. **Audit Log Timeline**: Status changes (e.g. changing status to "In Progress" or assigning to an agent) automatically trigger a system activity log that appends to the ticket comments timeline. This makes it easy to track historical activity.
+This application uses **Firebase Firestore** as the primary database.
+
+* Stores users, tickets, comments, and activity logs.
+* Provides scalable cloud-based data storage.
+* Supports real-time data synchronization (if enabled).
+* Integrates with Firebase Authentication for secure user login and role management.
+
+---
+
+## 🤖 AI Suggestion Engine
+
+If an `OPENAI_API_KEY` is available, the application uses OpenAI to predict:
+
+* Ticket Priority
+* Ticket Category
+
+If no API key is configured, the application automatically switches to a lightweight keyword-based classifier that detects words such as:
+
+* urgent
+* crash
+* password
+* wifi
+* network
+* hardware
+* software
+
+This ensures the AI suggestion feature remains functional without external API access.
+
+---
+
+## 📝 Design Decisions
+
+### Firebase Backend
+
+The application stores all ticketing data in Firebase Firestore, eliminating the need for MongoDB installation or configuration.
+
+### Authentication
+
+Firebase Authentication securely manages user accounts and role-based access control.
+
+### AI Fallback
+
+When the OpenAI API is unavailable, a built-in heuristic engine provides ticket classification to keep the application fully functional.
+
+### Activity Logging
+
+Every ticket update—including status changes, reassignment, priority updates, and comments—is automatically recorded in the activity timeline for complete audit tracking.
